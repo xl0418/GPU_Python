@@ -5,7 +5,7 @@ from pycuda import driver, compiler, gpuarray, tools
 import pycuda.autoinit
 
 kernel_code_template = """
-__global__ void MatrixMulKernel(float *a, float *b, float *c)
+__global__ void com_t(float *a, float *c)
 {
     // 2D Thread ID (assuming that only *one* block will be executed)
     int tx = threadIdx.x;
@@ -17,11 +17,10 @@ __global__ void MatrixMulKernel(float *a, float *b, float *c)
 
     // Each thread loads one row of M and one column of N, 
     //   to produce one element of P.
-    for (int k = 0; k < %(MATRIX_SIZE)s; ++k) {
-        float Aelement = a[ty];
-        float Belement = b[k];
-        Pvalue = Aelement - Belement;
-    }
+    float Aelement = a[ty];
+    float Belement = a[tx];
+    Pvalue = Aelement - Belement;
+
 
     // Write the matrix to device memory;
     // each thread writes one element
@@ -34,18 +33,21 @@ __global__ void MatrixMulKernel(float *a, float *b, float *c)
 #  as a consequence this number (squared) can't exceed max_threads,
 #  see http://documen.tician.de/pycuda/util.html#pycuda.tools.DeviceData
 #  for more information on how to get this number for your device
-MATRIX_SIZE = 10
+MATRIX_SIZE = 33
 
-# create two random square matrices
-a_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
-b_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
+# # create two random square matrices
+# a_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
+# b_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
+
+a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
 
 # compute reference on the CPU to verify GPU computation
-c_cpu = np.dot(a_cpu, b_cpu)
+# c_cpu = np.dot(a_cpu, b_cpu)
+c_cpu = a_cpu[:,np.newaxis] - a_cpu
 
 # transfer host (CPU) memory to device (GPU) memory
 a_gpu = gpuarray.to_gpu(a_cpu)
-b_gpu = gpuarray.to_gpu(b_cpu)
+# b_gpu = gpuarray.to_gpu(b_cpu)
 
 # create empty gpu array for the result (C = A * B)
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32)
@@ -60,12 +62,12 @@ kernel_code = kernel_code_template % {
 mod = compiler.SourceModule(kernel_code)
 
 # get the kernel function from the compiled module
-matrixmul = mod.get_function("MatrixMulKernel")
+matrixmul = mod.get_function("com_t")
 
 # call the kernel on the card
 matrixmul(
     # inputs
-    a_gpu, b_gpu,
+    a_gpu,
     # output
     c_gpu,
     # (only one) block of MATRIX_SIZE x MATRIX_SIZE threads
@@ -77,9 +79,9 @@ print("-" * 80)
 print("Matrix A (GPU):")
 print(a_gpu.get())
 
-print("-" * 80)
-print("Matrix B (GPU):")
-print(b_gpu.get())
+# print("-" * 80)
+# print("Matrix B (GPU):")
+# print(b_gpu.get())
 
 print("-" * 80)
 print("Matrix C (GPU):")
