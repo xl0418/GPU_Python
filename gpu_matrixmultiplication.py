@@ -29,8 +29,8 @@ __global__ void com_t(float *a, float *c)
 }
 """
 
-MATRIX_SIZE = 92
-BLOCK_SIZE = 23
+MATRIX_SIZE = 6
+BLOCK_SIZE = 5
 start = drv.Event()
 end = drv.Event()
 
