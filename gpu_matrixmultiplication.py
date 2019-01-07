@@ -1,5 +1,6 @@
 import numpy as np
-from pycuda import driver, compiler, gpuarray, tools
+from pycuda import compiler, gpuarray, tools
+import pycuda.driver as drv
 
 # -- initialize the device
 import pycuda.autoinit
@@ -7,9 +8,10 @@ import pycuda.autoinit
 kernel_code_template = """
 __global__ void com_t(float *a, float *c)
 {
-    // 2D Thread ID (assuming that only *one* block will be executed)
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
+
+    // 2D Thread ID 
+    int tx = blockDim.x*blockIdx.x + threadIdx.x; // Compute row index
+    int ty = blockDim.y*blockIdx.y + threadIdx.y; // Compute column index
 
     // Pvalue is used to store the element of the matrix
     // that is computed by the thread
@@ -21,29 +23,30 @@ __global__ void com_t(float *a, float *c)
     float Belement = a[tx];
     Pvalue = Aelement - Belement;
 
-
     // Write the matrix to device memory;
     // each thread writes one element
     c[ty * %(MATRIX_SIZE)s + tx] = Pvalue;
 }
 """
 
-# define the (square) matrix size
-#  note that we'll only use *one* block of threads here
-#  as a consequence this number (squared) can't exceed max_threads,
-#  see http://documen.tician.de/pycuda/util.html#pycuda.tools.DeviceData
-#  for more information on how to get this number for your device
-MATRIX_SIZE = 33
+MATRIX_SIZE = 92
+BLOCK_SIZE = 23
+start = drv.Event()
+end = drv.Event()
 
-# # create two random square matrices
-# a_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
-# b_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
-
+# # create a random vector
 a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
 
 # compute reference on the CPU to verify GPU computation
-# c_cpu = np.dot(a_cpu, b_cpu)
+start.record() # start timing
+start.synchronize()
 c_cpu = a_cpu[:,np.newaxis] - a_cpu
+end.record() # end timing
+# calculate the run length
+end.synchronize()
+secs = start.time_till(end)*1e-3
+print("CPU time:")
+print("%fs" % (secs))
 
 # transfer host (CPU) memory to device (GPU) memory
 a_gpu = gpuarray.to_gpu(a_cpu)
@@ -64,15 +67,30 @@ mod = compiler.SourceModule(kernel_code)
 # get the kernel function from the compiled module
 matrixmul = mod.get_function("com_t")
 
+start.record() # start timing
+
+# set grid size
+if MATRIX_SIZE%BLOCK_SIZE != 0:
+    grid=(MATRIX_SIZE//BLOCK_SIZE+1,MATRIX_SIZE//BLOCK_SIZE+1,1)
+else:
+    grid=(MATRIX_SIZE//BLOCK_SIZE,MATRIX_SIZE//BLOCK_SIZE,1)
+
 # call the kernel on the card
 matrixmul(
     # inputs
     a_gpu,
     # output
     c_gpu,
+    grid = grid,
     # (only one) block of MATRIX_SIZE x MATRIX_SIZE threads
-    block = (MATRIX_SIZE, MATRIX_SIZE, 1),
+    block = (BLOCK_SIZE, BLOCK_SIZE, 1),
     )
+end.record() # end timing
+end.synchronize()
+secs = start.time_till(end)*1e-3
+print("GPU time:")
+print("%fs" % (secs))
+
 
 # print the results
 print("-" * 80)
