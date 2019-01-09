@@ -19,10 +19,12 @@ __global__ void com_t(float *a, float *c)
 
     // Each thread loads one row of M and one column of N, 
     //   to produce one element of P.
+    if(ty <%(MATRIX_SIZE)s && tx < %(MATRIX_SIZE)s)
+    {
     float Aelement = a[ty];
     float Belement = a[tx];
     Pvalue = Aelement - Belement;
-
+    }
     // Write the matrix to device memory;
     // each thread writes one element
     c[ty * %(MATRIX_SIZE)s + tx] = Pvalue;
@@ -30,7 +32,7 @@ __global__ void com_t(float *a, float *c)
 """
 
 MATRIX_SIZE = 6
-BLOCK_SIZE = 5
+BLOCK_SIZE = 6
 start = drv.Event()
 end = drv.Event()
 
