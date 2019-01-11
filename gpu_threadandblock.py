@@ -28,13 +28,13 @@ mod = SourceModule("""
     // Write the matrix to device memory;
     // each thread writes one element
     c[ty * matrixsize + tx] = Pvalue;
-    printf("I am %dth thread in threadIdx.x:%d.threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n",(threadIdx.x+threadIdx.y*blockDim.x+(blockIdx.x*blockDim.x*blockDim.y)+(blockIdx.y*blockDim.x*blockDim.y)),threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
+    printf("I am %dth thread in threadIdx.x:%d.threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n",(ty * matrixsize + tx),threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
 
     }
     """)
 
-MATRIX_SIZE = 6
-BLOCK_SIZE = 5
+MATRIX_SIZE = 3
+BLOCK_SIZE = 2
 
 # # create a random vector
 a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
@@ -50,3 +50,17 @@ func(np.uint32(MATRIX_SIZE),a_gpu,c_gpu,block=(BLOCK_SIZE,BLOCK_SIZE,1),grid=(2,
 c_gpu
 
 
+
+blockdim = np.zeros((4,4))
+blockdim.fill(2)
+
+blockidx = np.array(([0,0,1,1],[0,0,1,1],[0,0,1,1],[0,0,1,1]))
+blockidy = np.array(([0,0,0,0],[0,0,0,0],[1,1,1,1],[1,1,1,1]))
+
+threadidx = np.array(([0,1,0,1],[0,1,0,1],[0,1,0,1],[0,1,0,1]))
+threadidy = np.array(([0,0,0,0],[1,1,1,1],[0,0,0,0],[1,1,1,1]))
+
+ty = blockdim*blockidy + threadidy
+tx = blockdim*blockidx + threadidx
+
+index = ty * 3 + tx
