@@ -18,23 +18,23 @@ mod = SourceModule("""
 
     // Each thread loads one row of M and one column of N, 
     //   to produce one element of P.
-    if((ty <matrixsize) && (tx < matrixsize))
+    if ( ty < matrixsize && tx < matrixsize)
     {
-    float Aelement = a[ty];
-    float Belement = a[tx];
-    Pvalue = Aelement - Belement;
+        float Aelement = a[ty];
+        float Belement = a[tx];
+        Pvalue = Aelement - Belement;
+        printf("I am %dth thread in threadIdx.x:%d.threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n",(ty * matrixsize + tx),threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
 
     }
     // Write the matrix to device memory;
     // each thread writes one element
     c[ty * matrixsize + tx] = Pvalue;
-    printf("I am %dth thread in threadIdx.x:%d.threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n",(ty * matrixsize + tx),threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
 
     }
     """)
 
-MATRIX_SIZE = 3
-BLOCK_SIZE = 2
+MATRIX_SIZE = 6
+BLOCK_SIZE = 5
 
 # # create a random vector
 a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
