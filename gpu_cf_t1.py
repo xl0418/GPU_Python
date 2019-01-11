@@ -6,7 +6,7 @@ import pycuda.driver as drv
 import pycuda.autoinit
 
 kernel_code_template = """
-__global__ void com_t(float *a, float *c)
+__global__ void com_t(float *a,float *z, float *c)
 {
 
     // 2D Thread ID 
@@ -21,9 +21,10 @@ __global__ void com_t(float *a, float *c)
     //   to produce one element of P.
     if((ty <%(MATRIX_SIZE)s) && (tx < %(MATRIX_SIZE)s))
     {
-    float Aelement = a[ty];
-    float Belement = a[tx];
-    Pvalue = Aelement - Belement;
+    float Aelement = z[ty];
+    float Belement = z[tx];
+    float a;
+    Pvalue = 2*a*(Aelement - Belement);
     }
     // Write the matrix to device memory;
     // each thread writes one element
@@ -31,14 +32,14 @@ __global__ void com_t(float *a, float *c)
 }
 """
 
-MATRIX_SIZE = 32*300
+MATRIX_SIZE = 32
 BLOCK_SIZE = 32
 
 # # create a random vector
-a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
+z_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
 
 # transfer host (CPU) memory to device (GPU) memory
-a_gpu = gpuarray.to_gpu(a_cpu)
+z_gpu = gpuarray.to_gpu(z_cpu)
 
 # create empty gpu array for the result (C = A * B)
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32)
@@ -64,7 +65,8 @@ else:
 # call the kernel on the card
 matrixmul(
     # inputs
-    a_gpu,
+    0.1,
+    z_gpu,
     # output
     c_gpu,
     grid = grid,
