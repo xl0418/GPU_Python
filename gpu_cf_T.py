@@ -24,10 +24,11 @@ __global__ void com_t(float *a, float *c)
     float Aelement = a[ty];
     float Belement = a[tx];
     Pvalue = Aelement - Belement;
+    c[ty * %(MATRIX_SIZE)s + tx] = Pvalue;
     }
     // Write the matrix to device memory;
     // each thread writes one element
-    c[ty * %(MATRIX_SIZE)s + tx] = Pvalue;
+
 }
 """
 

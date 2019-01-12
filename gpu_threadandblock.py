@@ -23,18 +23,18 @@ mod = SourceModule("""
         float Aelement = a[ty];
         float Belement = a[tx];
         Pvalue = Aelement - Belement;
-        printf("I am %dth thread in threadIdx.x:%d.threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n",(ty * matrixsize + tx),threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
-
+        c[ty * matrixsize + tx] = Pvalue;
     }
     // Write the matrix to device memory;
     // each thread writes one element
-    c[ty * matrixsize + tx] = Pvalue;
+    
+    printf("I am %dth thread in threadIdx.x:%d, value %f. \\n threadIdx.y:%d  blockIdx.:%d blockIdx.y:%d blockDim.x:%d blockDim.y:%d\\n ",(ty * matrixsize + tx),Pvalue,threadIdx.x, threadIdx.y,blockIdx.x,blockIdx.y,blockDim.x,blockDim.y);
 
     }
     """)
 
-MATRIX_SIZE = 6
-BLOCK_SIZE = 5
+MATRIX_SIZE = 65
+BLOCK_SIZE =16
 
 # # create a random vector
 a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
@@ -45,8 +45,14 @@ a_gpu = gpuarray.to_gpu(a_cpu)
 # create empty gpu array for the result (C = A * B)
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32)
 
+if MATRIX_SIZE%BLOCK_SIZE != 0:
+    grid=(MATRIX_SIZE//BLOCK_SIZE+1,MATRIX_SIZE//BLOCK_SIZE+1,1)
+else:
+    grid=(MATRIX_SIZE//BLOCK_SIZE,MATRIX_SIZE//BLOCK_SIZE,1)
+
+
 func = mod.get_function("say_hi")
-func(np.uint32(MATRIX_SIZE),a_gpu,c_gpu,block=(BLOCK_SIZE,BLOCK_SIZE,1),grid=(2,2,1))
+func(np.uint32(MATRIX_SIZE),a_gpu,c_gpu,block=(BLOCK_SIZE,BLOCK_SIZE,1),grid=grid)
 c_gpu
 
 
