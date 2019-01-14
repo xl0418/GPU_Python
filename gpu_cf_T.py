@@ -32,8 +32,8 @@ __global__ void com_t(float *a, float *c)
 }
 """
 
-MATRIX_SIZE = 6
-BLOCK_SIZE = 5
+MATRIX_SIZE = 10000
+BLOCK_SIZE = 32
 
 # # create a random vector
 a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
