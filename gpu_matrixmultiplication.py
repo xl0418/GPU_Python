@@ -6,40 +6,45 @@ import pycuda.driver as drv
 import pycuda.autoinit
 
 kernel_code_template = """
-__global__ void com_t(float *a, folat *b, float *c)
+__global__ void matrixmulti(float *a, float *b, float *c)
 {
 
     // 2D Thread ID 
-    int tx = blockDim.x*blockIdx.x + threadIdx.x; // Compute row index
-    int ty = blockDim.y*blockIdx.y + threadIdx.y; // Compute column index
-
-    // Pvalue is used to store the element of the matrix
-    // that is computed by the thread
-    float Pvalue = 0;
+    int tx = blockDim.x*blockIdx.x + threadIdx.x; // Compute column index
+    int ty = blockDim.y*blockIdx.y + threadIdx.y; // Compute row index
 
     // Each thread loads one row of M and one column of N, 
     //   to produce one element of P.
     if((ty <%(MATRIX_SIZE)s) && (tx < %(MATRIX_SIZE)s))
     {
-    float Aelement = a[ty];
-    float Belement = a[tx];
-    Pvalue = Aelement - Belement;
+    // Pvalue is used to store the element of the matrix
+    // that is computed by the thread
+    float Pvalue = 0;
+    for(int k=0; k<%(MATRIX_SIZE)s;++k)
+    {
+    float Aelement = a[ty*%(MATRIX_SIZE)s +k];
+    float Belement = b[k*%(MATRIX_SIZE)s +tx];
+    Pvalue += Aelement * Belement;
+    }
     c[ty * %(MATRIX_SIZE)s + tx] = Pvalue;
     }
-    // Write the matrix to device memory;
-    // each thread writes one element
 
 }
 """
 
-MATRIX_SIZE = 1000
+MATRIX_SIZE = 40
 BLOCK_SIZE = 32
 
-# # create a random vector
-a_cpu = np.array([i for i in range(MATRIX_SIZE)]).astype(np.float32)
+# create two random square matrices
+a_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
+b_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
+
+# compute reference on the CPU to verify GPU computation
+c_cpu = np.dot(a_cpu, b_cpu)
 
 # transfer host (CPU) memory to device (GPU) memory
 a_gpu = gpuarray.to_gpu(a_cpu)
+b_gpu = gpuarray.to_gpu(b_cpu)
 
 # create empty gpu array for the result (C = A * B)
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32)
@@ -54,7 +59,8 @@ kernel_code = kernel_code_template % {
 mod = compiler.SourceModule(kernel_code)
 
 # get the kernel function from the compiled module
-matrixmul = mod.get_function("com_t")
+matrixmul = mod.get_function("matrixmulti")
+
 
 # set grid size
 if MATRIX_SIZE%BLOCK_SIZE != 0:
@@ -65,11 +71,15 @@ else:
 # call the kernel on the card
 matrixmul(
     # inputs
-    a_gpu,
+    a_gpu, b_gpu,
     # output
     c_gpu,
-    grid = grid,
+    grid=grid,
     # (only one) block of MATRIX_SIZE x MATRIX_SIZE threads
     block = (BLOCK_SIZE, BLOCK_SIZE, 1),
     )
+
 c_gpu
+
+
+np.allclose(c_cpu, c_gpu.get())

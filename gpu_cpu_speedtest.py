@@ -42,7 +42,7 @@ matrixmul = mod.get_function("com_t")
 
 MATRIX_SIZE_vec = np.arange(100,15100,100).tolist()
 BLOCK_SIZE = 32
-rep = 100
+rep = 150000
 
 start = drv.Event()
 end = drv.Event()
@@ -103,5 +103,5 @@ dim = np.tile(MATRIX_SIZE_vec,2)
 speedtest = {'Time':time,'Device':device,'Dim':dim}
 stdf = pd.DataFrame(speedtest)
 sns.lineplot(x="Dim", y="Time", hue="Device",style='Device',  data=stdf)
-plt.title('Time for 100 replicates of simple matrix algebra')
+plt.title('Time for 150k replicates of simple matrix algebra')
 
