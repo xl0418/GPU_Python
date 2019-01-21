@@ -75,7 +75,6 @@ matrixmul(
     # output
     c_gpu,
     grid=grid,
-    # (only one) block of MATRIX_SIZE x MATRIX_SIZE threads
     block = (BLOCK_SIZE, BLOCK_SIZE, 1),
     )
 
