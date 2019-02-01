@@ -1,6 +1,7 @@
 import numpy as np
 from pycuda import compiler, gpuarray, tools
 import pycuda.driver as drv
+import pycuda.autoinit
 
 
 kernel_code_template = """

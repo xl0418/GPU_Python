@@ -1,6 +1,7 @@
 import numpy as np
 from pycuda import compiler, gpuarray, tools
 import pycuda.driver as drv
+import pycuda.autoinit
 
 
 kernel_code_template = """
@@ -30,8 +31,8 @@ __global__ void matrixmulti(int matrixsize,float *a, float *b, float *c)
 }
 """
 
-MATRIX_SIZE = 150
-BLOCK_SIZE = 32
+MATRIX_SIZE = 321
+BLOCK_SIZE = 10
 
 # create two random square matrices
 a_cpu = np.random.randn(MATRIX_SIZE, MATRIX_SIZE).astype(np.float32)
@@ -46,12 +47,6 @@ b_gpu = gpuarray.to_gpu(b_cpu)
 
 # create empty gpu array for the result (C = A * B)
 c_gpu = gpuarray.empty((MATRIX_SIZE, MATRIX_SIZE), np.float32)
-
-# get the kernel code from the template
-# by specifying the constant MATRIX_SIZE
-# kernel_code = kernel_code_template % {
-#     'MATRIX_SIZE': MATRIX_SIZE
-#     }
 
 # compile the kernel code
 mod = compiler.SourceModule(kernel_code_template)
@@ -79,6 +74,7 @@ matrixmul(np.uint32(matrixsize),
 
 c_gpu
 
+c_cpu - c_gpu.get()
 
 np.allclose(c_cpu, c_gpu.get())
 
